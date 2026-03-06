@@ -28,4 +28,8 @@ curl -fsSL https://ollama.com/install.sh | sh
 evaluate_functional_correctness samples.jsonl
 ```
 
-# Install InstructEval (for humaneval prompt)
+# Run single run
+```shell
+# exec_single_run.sh model_name dataset_name output_dir [max_samples:optional]
+bash exec_single_run.sh tinyllama:1.1b human_eval output_dir 10
+```
