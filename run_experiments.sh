@@ -1,12 +1,12 @@
 #llms=("phi:2.7b" "phi3:3.8b" "qwen2.5:1.5b" "mistral:7b")
-#llms=("tinyllama:1.1b" "phi:2.7b" "phi3:3.8b" "qwen2.5:1.5b" "gemma:2b" "mistral:7b")
-llms=("tinyllama:1.1b")
-#dataset=("human_eval" "gsm8k")
-dataset=("gsm8k")
+llms=("tinyllama:1.1b" "phi:2.7b" "phi3:3.8b" "qwen2.5:1.5b" "gemma:2b" "mistral:7b")
+#llms=("tinyllama:1.1b")
+dataset=("human_eval" "gsm8k")
+#dataset=("gsm8k")
 freqs=("1.5GHz" "1.8GHz" "2.0GHz" "2.2GHz" "2.5GHz")
-core_ids=("0" "0-1" "0-3" "0-5" "0-5")
+core_ids=("2" "2-3" "2-5" "2-7" "2-9")
 num_scenarios=${#freqs[@]}
-memory=(8 8 8 8 8)
+memory=(4 8 12 14 16)
 # governor
 ORIG_GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)
 
