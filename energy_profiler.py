@@ -21,13 +21,13 @@ class EnergyProfiler(ABC):
         self.measure.end()
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        if self.measure.result.pkg is None or self.measure.result.dram is None or self.measure.result.duration is None:
+        if self.measure.result.pkg is None or self.measure.result.duration is None:
             cpu_energy = None
             dram_energy = None
             time = None
         else:
             cpu_energy = self.measure.result.pkg[0] * 1e-6 # Convert to Joules
-            dram_energy = self.measure.result.dram[0] * 1e-6 # Convert to Joules
+            dram_energy = 0 if self.measure.result.dram is None else self.measure.result.dram[0] * 1e-6 # Convert to Joules
             time = self.measure.result.duration * 1e-6 # Convert to seconds
         self._started = False
         return {

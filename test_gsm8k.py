@@ -82,7 +82,7 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
 
         while True:
             profiler.start()
-            completion, rss_trace = call_ollama_generate_with_memory(model=model_name, prompt=prompt)
+            completion, rss_trace, ttft = call_ollama_generate_with_memory(model=model_name, prompt=prompt)
             profile = profiler.stop()
             if profile["cpu_energy"] is not None and profile["dram_energy"] is not None and profile["time"] is not None:
                 break
@@ -99,6 +99,7 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
         profile["rss_baseline_bytes"] = rss_trace.baseline_rss
         profile["rss_peak_bytes"] = rss_trace.peak_rss
         profile["rss_final_bytes"] = rss_trace.final_rss
+        profile["ttft"] = ttft
         profile["task_id"] = f"gsm8k/{i}"
         profile["correct"] = is_correct
         profiles.append(profile)
@@ -115,7 +116,7 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
         )
         time.sleep(0.1)
 
-    out_prefix = f"GSM8K_{model_name}"
+    out_prefix = f"gsm8k_{model_name}"
     accuracy = sum(1 for s in samples if s["correct"]) / len(samples) if samples else 0.0
     summary = {
         "model_name": model_name,

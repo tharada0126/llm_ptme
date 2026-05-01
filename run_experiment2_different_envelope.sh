@@ -17,10 +17,17 @@ echo "Saved governor: $ORIG_GOV"
 echo "Saved turbo: $ORIG_TURBO"
 
 OLLAMA=/home/tomohiro/.local/bin/ollama
+# if OLLAMA is running, kill it
+if pgrep -x "ollama" > /dev/null; then
+    echo "Killing existing Ollama process..."
+    pkill -x "ollama"
+    # wait for a few seconds to ensure it is killed
+    sleep 5
+fi
 CUDA_VISIBLE_DEVICES="" $OLLAMA serve &
-for i in $(seq 0 $((num_scenarios-1))); do
-    for llm in "${llms[@]}"; do
-        for ds in "${dataset[@]}"; do
+for ds in "${dataset[@]}"; do
+    for i in $(seq 0 $((num_scenarios-1))); do
+        for llm in "${llms[@]}"; do
             freq="${freqs[i]}"
             core_id="${core_ids[i]}"
             mem="${memory[i]}"

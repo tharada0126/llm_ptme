@@ -7,6 +7,7 @@ import logging
 from ollama_utils import call_ollama_generate
 from test_human_eval import test_human_eval
 from test_gsm8k import test_gsm8k
+from test_swe_bench import test_swebench_bm25
 
 # HTTPXのログレベルをWARNINGに設定してINFOを出さないようにする
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -44,8 +45,7 @@ def test_swebench(model_name, dataset_name):
 
 def main(model_name, dataset_name, output_dir, max_samples=None):
     if dataset_name in ["SWE-bench", "SWE-bench_Lite", "SWE-bench_bm25_40k", "SWE-bench_Verified"]:
-        #test_swebench(model_name, dataset_name)
-        raise NotImplementedError("SWE-bench testing not implemented yet")
+        test_swebench_bm25(model_name, dataset_name, output_dir, max_samples=max_samples)
     elif dataset_name == "human_eval":
         test_human_eval(model_name, dataset_name, output_dir, max_samples=max_samples)
     elif dataset_name == "GSM8K" or dataset_name == "gsm8k":

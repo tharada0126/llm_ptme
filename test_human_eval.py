@@ -24,7 +24,7 @@ def test_human_eval(model_name, dataset_name, output_dir, max_samples: Optional[
         )
         while True:
             profiler.start()
-            completion, rss_trace = call_ollama_generate_with_memory(model=model_name, prompt=prompt)
+            completion, rss_trace, ttft = call_ollama_generate_with_memory(model=model_name, prompt=prompt)
             profile = profiler.stop()
             if profile["cpu_energy"] is not None and profile["dram_energy"] is not None and profile["time"] is not None:
                 break
@@ -36,21 +36,22 @@ def test_human_eval(model_name, dataset_name, output_dir, max_samples: Optional[
         profile["prompt_tokens"] = completion.usage.prompt_tokens
         profile["rss_baseline_bytes"] = rss_trace.baseline_rss
         profile["rss_final_bytes"] = rss_trace.final_rss
+        profile["ttft"] = ttft
         samples.append(dict(task_id=task_id, completion=response))
         profiles.append(profile)
         time.sleep(0.1)
     if output_dir is not None:
         os.makedirs(output_dir, exist_ok=True)
-        with open(os.path.join(output_dir, f"HE_{model_name}_samples.jsonl"), "w") as f:
+        with open(os.path.join(output_dir, f"human_eval_{model_name}_samples.jsonl"), "w") as f:
             for sample in samples:
                 f.write(json.dumps(sample) + "\n")
-        with open(os.path.join(output_dir, f"HE_{model_name}_profiles.jsonl"), "w") as f:
+        with open(os.path.join(output_dir, f"human_eval_{model_name}_profiles.jsonl"), "w") as f:
             for profile in profiles:
                 f.write(json.dumps(profile) + "\n")
     else:
-        with open(f"HE_{model_name}_samples.jsonl", "w") as f:
+        with open(f"human_eval_{model_name}_samples.jsonl", "w") as f:
             for sample in samples:
                 f.write(json.dumps(sample) + "\n")
-        with open(f"HE_{model_name}_profiles.jsonl", "w") as f:
+        with open(f"human_eval_{model_name}_profiles.jsonl", "w") as f:
             for profile in profiles:
                 f.write(json.dumps(profile) + "\n")

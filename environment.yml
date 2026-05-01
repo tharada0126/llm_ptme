@@ -21,9 +21,7 @@ dependencies:
   - expat=2.7.4=h7354ed3_0
   - xorg-libxau=1.0.12=h9b100fa_0
   - xz=5.6.4=h5eee18b_1
-  - openssl=3.6.1
   - libuuid=1.41.5=h5eee18b_0
-  - ca-certificates=2026.1.4
   - xorg-libx11=1.8.12=h9b100fa_1
   - ld_impl_linux-64=2.44=h153f514_2
   - readline=8.3=hc2a1206_0
