@@ -94,8 +94,8 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
         pred_answer = _extract_answer(response)
         gold_answer = _extract_answer(gold)
 
-        profile["completion_tokens"] = completion.usage.completion_tokens
-        profile["prompt_tokens"] = completion.usage.prompt_tokens
+        profile["completion_tokens"] = completion.usage.completion_tokens if completion.usage else None
+        profile["prompt_tokens"] = completion.usage.prompt_tokens if completion.usage else None
         profile["rss_baseline_bytes"] = rss_trace.baseline_rss
         profile["rss_peak_bytes"] = rss_trace.peak_rss
         profile["rss_final_bytes"] = rss_trace.final_rss

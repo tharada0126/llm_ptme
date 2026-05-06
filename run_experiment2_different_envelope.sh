@@ -1,8 +1,8 @@
 #llms=("phi:2.7b" "phi3:3.8b" "qwen2.5:1.5b" "mistral:7b")
 llms=("tinyllama:1.1b" "qwen2.5:1.5b" "phi:2.7b" "phi3:3.8b" "gemma:2b" "mistral:7b")
-#llms=("tinyllama:1.1b")
-dataset=("human_eval" "gsm8k")
-#dataset=("gsm8k")
+#llms=("tinyllama:1.1b" "phi:2.7b")
+#dataset=("human_eval" "gsm8k")
+dataset=("mmlu-pro")
 freqs=("1.5GHz" "1.8GHz" "2.0GHz" "2.2GHz" "2.5GHz")
 core_ids=("2" "2-3" "2-5" "2-7" "2-9")
 num_scenarios=${#freqs[@]}
@@ -51,7 +51,7 @@ for ds in "${dataset[@]}"; do
             fi
             mkdir -p "$output_dir"
             systemd-run --scope -p MemoryMax=$((mem * 1024 * 1024 * 1024)) -p MemorySwapMax=0\
-                taskset -c "$core_id" bash exec_single_test.sh $llm $ds $output_dir
+                taskset -c "$core_id" bash exec_single_test.sh $llm $ds $output_dir 300 # set max_samples to 300 for faster execution
             # output cpupower frequency info to a file
             cpupower frequency-info > "${output_dir}/cpupower_frequency_info.txt"
             # output maximum memory setting to a file

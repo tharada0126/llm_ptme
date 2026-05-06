@@ -28,6 +28,13 @@ pip install setuptools --upgrade
 git clone https://github.com/openai/grade-school-math.git
 ```
 
+# Prepare MMLU-Pro
+```shell
+git clone https://github.com/TIGER-AI-Lab/MMLU-Pro.git
+cd MMLU-Pro
+pip install -r requirements.txt
+```
+
 # Install ollama
 ```shell
 curl -fsSL https://ollama.com/install.sh | sh

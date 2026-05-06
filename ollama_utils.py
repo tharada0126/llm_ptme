@@ -261,7 +261,6 @@ def call_ollama_generate(
                 )
 
     full_text = "".join(chunks)
-    print(full_text)
 
     response = SimpleNamespace(
         choices=[
