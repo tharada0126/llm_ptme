@@ -1,0 +1,17 @@
+numpy
+pandas
+tqdm
+requests
+openai
+ollama
+psutil
+pyRAPL
+datasets
+matplotlib
+scipy
+scikit-learn
+transformers
+thop
+sentencepiece
+protobuf
+accelerate
