@@ -1,0 +1,32 @@
+services:
+  llm-exp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llm-energy-exp:latest
+    container_name: "llm_exp_${SCENARIO:-E0}"
+    working_dir: /workspace
+    privileged: true
+
+    cpuset: "${CPUSET_CPUS:-2}"
+    mem_limit: "${MEMORY_LIMIT:-4g}"
+    memswap_limit: "${MEMORY_LIMIT:-4g}"
+
+    volumes:
+      - .:/workspace
+      - ./results:/workspace/results
+      - ollama_models:/root/.ollama
+      - /sys/class/powercap:/sys/class/powercap:ro
+
+    environment:
+      SCENARIO: "${SCENARIO:-E0}"
+      MMLU_PRO_DIR: "/opt/MMLU-Pro"
+      GSM8K_DIR: "/opt/grade-school-math"
+      HUMAN_EVAL_DIR: "/opt/human-eval"
+      OLLAMA_HOST: "127.0.0.1:11434"
+
+    command: >
+      bash -lc "ollama serve & sleep 5 && python main.py --scenario ${SCENARIO:-E0} --model_name ${MODEL_NAME:-tinyllama:1.1b} --dataset_name ${DATASET_NAME:-human_eval} --max_samples ${MAX_SAMPLES:-1}"
+
+volumes:
+  ollama_models:
