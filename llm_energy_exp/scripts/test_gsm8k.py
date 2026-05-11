@@ -9,11 +9,11 @@ import energy_profiler as ep
 import tqdm
 import os
 
-from bench_utils import augment_profile, run_with_profiler, write_jsonl
+from scripts.bench_utils import augment_profile, run_with_profiler, write_jsonl
 
 ANS_RE = re.compile(r"####\s*([-+]?\d[\d,]*(?:\.\d+)?)")
 NUM_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
-DEFAULT_GSM8K_PATH = Path("grade-school-math/grade_school_math/data/test.jsonl")
+DEFAULT_GSM8K_PATH = Path("/opt/grade-school-math/grade_school_math/data/test.jsonl")
 
 
 def _read_jsonl(path: Path):

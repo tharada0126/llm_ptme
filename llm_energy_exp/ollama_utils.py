@@ -1,3 +1,4 @@
+import os
 import time
 from dataclasses import dataclass
 from threading import Thread
@@ -73,6 +74,7 @@ def call_ollama_generate(
     prompt: str,
     system: str,
     num_predict: int = 512,
+    num_thread: int | None = None,
     on_first_token=None,
 ):
     client = Client(host="http://localhost:11434")
@@ -82,14 +84,24 @@ def call_ollama_generate(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
+    if num_thread is None:
+        num_thread_env = os.environ.get("OLLAMA_NUM_THREADS")
+        if num_thread_env is not None and num_thread_env != "":
+            num_thread = int(num_thread_env)
+    
+    options = {
+        "temperature": 0.0,
+        "num_predict": num_predict,
+    }
+
+    if num_thread is not None:
+        options["num_thread"] = num_thread
+
     stream = client.chat(
         model=model,
         messages=messages,
         stream=True,
-        options={
-            "temperature": 0.0,
-            "num_predict": num_predict,
-        },
+        options=options,
     )
 
     first = True

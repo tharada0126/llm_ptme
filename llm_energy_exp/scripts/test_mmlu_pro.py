@@ -8,7 +8,7 @@ import re
 
 from pathlib import Path
 from datasets import load_dataset
-from bench_utils import augment_profile, run_with_profiler, write_jsonl
+from scripts.bench_utils import augment_profile, run_with_profiler, write_jsonl
 
 MMLU_PRO_DIR = Path(os.environ.get("MMLU_PRO_DIR", "/opt/MMLU-Pro"))
 

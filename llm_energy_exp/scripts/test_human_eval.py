@@ -6,7 +6,7 @@ import time
 from typing import Optional
 import os
 
-from bench_utils import augment_profile, run_with_profiler, write_jsonl
+from scripts.bench_utils import augment_profile, run_with_profiler, write_jsonl
 
 def test_human_eval(model_name, dataset_name, output_dir, max_samples: Optional[int] = None):
     problem = human_eval.data.read_problems()

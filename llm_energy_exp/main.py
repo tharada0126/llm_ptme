@@ -5,6 +5,7 @@ from pathlib import Path
 from scripts.test_human_eval import test_human_eval
 from scripts.test_gsm8k import test_gsm8k
 from scripts.test_mmlu_pro import test_mmlu_pro
+from ollama_utils import call_ollama_generate_with_memory
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -57,7 +58,7 @@ def main(
     # We can use a simple prompt for warming up
     warmup_prompt = "Hello, this is a warm-up prompt to initialize the model."
     try:
-        call_ollama_generate(model=model_name, prompt=warmup_prompt, system="", num_predict=1)
+        call_ollama_generate_with_memory(model=model_name, prompt=warmup_prompt, num_predict=32)
     except Exception as e:
         print(f"Warning: Model warm-up failed with error: {e}")
 
