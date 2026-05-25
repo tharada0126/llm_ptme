@@ -9,7 +9,7 @@ import energy_profiler as ep
 import tqdm
 import os
 
-from scripts.bench_utils import augment_profile, run_with_profiler, write_jsonl
+from scripts.bench_utils import augment_profile, run_with_profiler, append_jsonl
 
 ANS_RE = re.compile(r"####\s*([-+]?\d[\d,]*(?:\.\d+)?)")
 NUM_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
@@ -68,14 +68,40 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
     if not DEFAULT_GSM8K_PATH.exists():
         raise FileNotFoundError(f"GSM8K file not found: {DEFAULT_GSM8K_PATH}")
 
-    samples = []
-    profiles = []
-    profiler = ep.EnergyProfiler()
     questions = list(_read_jsonl(DEFAULT_GSM8K_PATH))
     if max_samples is not None:
         questions = questions[:max_samples]
 
-    for i, item in enumerate(tqdm.tqdm(questions)):
+    # Determine output paths before the loop to support resume
+    out_prefix = f"gsm8k_{model_name}"
+    if output_dir is not None:
+        os.makedirs(output_dir, exist_ok=True)
+        base = os.path.join(output_dir, out_prefix)
+    else:
+        base = out_prefix
+    sample_path = f"{base}_samples.jsonl"
+    profile_path = f"{base}_profiles.jsonl"
+
+    # Skip already-completed questions
+    done_ids: set = set()
+    if os.path.exists(sample_path):
+        with open(sample_path, encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                done_ids.add(rec["task_id"])
+        print(f"Resuming: {len(done_ids)} questions already done, skipping.")
+
+    remaining = [(i, item) for i, item in enumerate(questions) if f"gsm8k/{i}" not in done_ids]
+
+    if not remaining:
+        print("All questions already completed.")
+        return
+
+    samples = []
+    profiles = []
+    profiler = ep.EnergyProfiler()
+
+    for i, item in tqdm.tqdm(remaining):
         question = item["question"]
         gold = item["answer"]
         prompt = _build_prompt(question)
@@ -104,21 +130,18 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
         )
         time.sleep(0.1)
 
-    out_prefix = f"gsm8k_{model_name}"
-    accuracy = sum(1 for s in samples if s["correct"]) / len(samples) if samples else 0.0
+    append_jsonl(sample_path, samples)
+    append_jsonl(profile_path, profiles)
+
+    # Compute summary from all samples including previously completed ones
+    all_samples = list(_read_jsonl(Path(sample_path)))
+    accuracy = sum(1 for s in all_samples if s["correct"]) / len(all_samples) if all_samples else 0.0
     summary = {
         "model_name": model_name,
         "dataset": "GSM8K",
-        "num_samples": len(samples),
+        "num_samples": len(all_samples),
         "accuracy": accuracy,
     }
     print(summary)
-    if output_dir is not None:
-        os.makedirs(output_dir, exist_ok=True)
-        base = os.path.join(output_dir, out_prefix)
-    else:
-        base = out_prefix
-    write_jsonl(f"{base}_samples.jsonl", samples)
-    write_jsonl(f"{base}_profiles.jsonl", profiles)
     with open(f"{base}_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)

@@ -8,7 +8,7 @@ import re
 
 from pathlib import Path
 from datasets import load_dataset
-from scripts.bench_utils import augment_profile, run_with_profiler, write_jsonl
+from scripts.bench_utils import augment_profile, run_with_profiler, append_jsonl
 
 MMLU_PRO_DIR = Path(os.environ.get("MMLU_PRO_DIR", "/opt/MMLU-Pro"))
 
@@ -107,6 +107,7 @@ def test_mmlu_pro(
     subject: Optional[str] = None,
     max_samples: Optional[int] = None,
     ntrain: int = 0,
+    selected_ids_file: Optional[str] = None,
 ):
     dataset = load_dataset(dataset_name)
 
@@ -116,8 +117,38 @@ def test_mmlu_pro(
     if subject is not None and subject != "all":
         test_data = select_by_category(test_data, subject)
 
+    if selected_ids_file is not None:
+        with open(selected_ids_file, encoding="utf-8") as f:
+            selected_ids = {int(line.strip()) for line in f if line.strip()}
+        test_data = [e for e in test_data if e["question_id"] in selected_ids]
+
     if max_samples is not None:
         test_data = test_data[:max_samples]
+
+    # Determine output paths before the loop to support resume
+    safe_model_name = model_name.replace("/", "_").replace(":", "_")
+    if output_dir is not None:
+        os.makedirs(output_dir, exist_ok=True)
+        base = os.path.join(output_dir, f"mmlu_pro_{safe_model_name}_{split}")
+    else:
+        base = f"mmlu_pro_{safe_model_name}"
+    sample_path = f"{base}_samples.jsonl"
+    profile_path = f"{base}_profiles.jsonl"
+
+    # Skip already-completed questions
+    done_ids: set = set()
+    if os.path.exists(sample_path):
+        with open(sample_path, encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                done_ids.add(rec["question_id"])
+        print(f"Resuming: {len(done_ids)} questions already done, skipping.")
+
+    test_data = [e for e in test_data if e["question_id"] not in done_ids]
+
+    if not test_data:
+        print("All selected questions already completed.")
+        return
 
     samples = []
     profiles = []
@@ -167,17 +198,8 @@ def test_mmlu_pro(
 
         time.sleep(0.1)
 
-    safe_model_name = model_name.replace("/", "_").replace(":", "_")
-
-    if output_dir is not None:
-        os.makedirs(output_dir, exist_ok=True)
-        base = os.path.join(output_dir, f"mmlu_pro_{safe_model_name}_{split}")
-    else:
-        base = f"mmlu_pro_{safe_model_name}"
-    sample_path = f"{base}_samples.jsonl"
-    profile_path = f"{base}_profiles.jsonl"
-    write_jsonl(sample_path, samples)
-    write_jsonl(profile_path, profiles)
+    append_jsonl(sample_path, samples)
+    append_jsonl(profile_path, profiles)
 
     total = len(samples)
     correct_count = sum(1 for x in samples if x["correct"])

@@ -36,3 +36,10 @@ def write_jsonl(path: str, records: list) -> None:
     with open(path, "w", encoding="utf-8") as f:
         for row in records:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def append_jsonl(path: str, records: list) -> None:
+    """Append a list of dicts to a JSONL file (create if not exists)."""
+    with open(path, "a", encoding="utf-8") as f:
+        for row in records:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")

@@ -47,6 +47,7 @@ def main(
     output_dir: str | None,
     max_samples: int | None = None,
     scenario: str = "E0",
+    selected_ids_file: str | None = None,
 ):
     dataset_key = normalize_dataset_name(dataset_name)
 
@@ -75,6 +76,7 @@ def main(
     print(f"Dataset     : {dataset_key}")
     print(f"Output dir  : {output_dir}")
     print(f"Max samples : {max_samples}")
+    print(f"Selected IDs: {selected_ids_file}")
     print("========================================")
 
     if dataset_key == "human_eval":
@@ -101,6 +103,7 @@ def main(
             split="test",
             max_samples=max_samples,
             ntrain=0,
+            selected_ids_file=selected_ids_file,
         )
 
 
@@ -130,11 +133,17 @@ if __name__ == "__main__":
         help="Directory to save outputs.",
     )
 
+    def _int_or_none(v: str):
+        return None if v.lower() in ("none", "") else int(v)
+
+    def _str_or_none(v: str):
+        return None if v.lower() in ("none", "") else v
+
     parser.add_argument(
         "--max_samples",
-        type=int,
+        type=_int_or_none,
         default=None,
-        help="Limit number of problems for debugging.",
+        help="Limit number of problems. Pass 'none' to disable.",
     )
 
     parser.add_argument(
@@ -142,6 +151,13 @@ if __name__ == "__main__":
         type=str,
         default="E0",
         help="Execution scenario label, e.g., E1, E2, E3.",
+    )
+
+    parser.add_argument(
+        "--selected_ids_file",
+        type=_str_or_none,
+        default=None,
+        help="Path to question_id list (one per line). MMLU-Pro only. Pass 'none' to disable.",
     )
 
     args = parser.parse_args()
@@ -152,4 +168,5 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         max_samples=args.max_samples,
         scenario=args.scenario,
+        selected_ids_file=args.selected_ids_file,
     )
