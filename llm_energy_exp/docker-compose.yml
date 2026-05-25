@@ -20,18 +20,14 @@ services:
       GSM8K_DIR: "/opt/grade-school-math"
       HUMAN_EVAL_DIR: "/opt/human-eval"
       OLLAMA_HOST: "127.0.0.1:11434"
+      MAX_SAMPLES: "${MAX_SAMPLES:-none}"
+      SELECTED_IDS_FILE: "${SELECTED_IDS_FILE:-}"
 
-    command: >
+    command: |
       bash -lc '
-
         ollama serve > /tmp/ollama.log 2>&1 &
-
         sleep 5
-        if [ "${MAX_SAMPLES:-none}" = "none" ]; then
-          python main.py --scenario ${SCENARIO:-full} --model_name ${MODEL_NAME:-tinyllama:1.1b} --dataset_name ${DATASET_NAME:-human_eval}
-        else
-          python main.py --scenario ${SCENARIO:-full} --model_name ${MODEL_NAME:-tinyllama:1.1b} --dataset_name ${DATASET_NAME:-human_eval} --max_samples ${MAX_SAMPLES}
-        fi
+        python main.py --scenario ${SCENARIO:-E0} --model_name ${MODEL_NAME:-tinyllama:1.1b} --dataset_name ${DATASET_NAME:-human_eval} --max_samples ${MAX_SAMPLES:-none} --selected_ids_file ${SELECTED_IDS_FILE:-none}
       '
 
 volumes:
