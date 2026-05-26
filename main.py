@@ -48,6 +48,7 @@ def main(
     max_samples: int | None = None,
     scenario: str = "E0",
     selected_ids_file: str | None = None,
+    gsm8k_selected_idx_file: str | None = None,
 ):
     dataset_key = normalize_dataset_name(dataset_name)
 
@@ -77,6 +78,7 @@ def main(
     print(f"Output dir  : {output_dir}")
     print(f"Max samples : {max_samples}")
     print(f"Selected IDs: {selected_ids_file}")
+    print(f"GSM8K idx   : {gsm8k_selected_idx_file}")
     print("========================================")
 
     if dataset_key == "human_eval":
@@ -93,6 +95,7 @@ def main(
             dataset_name=dataset_key,
             output_dir=str(output_dir),
             max_samples=max_samples,
+            selected_idx_file=gsm8k_selected_idx_file,
         )
 
     elif dataset_key == "mmlu-pro":
@@ -160,6 +163,13 @@ if __name__ == "__main__":
         help="Path to question_id list (one per line). MMLU-Pro only. Pass 'none' to disable.",
     )
 
+    parser.add_argument(
+        "--gsm8k_selected_idx_file",
+        type=_str_or_none,
+        default=None,
+        help="Path to index list (one per line). GSM8K only. Pass 'none' to disable.",
+    )
+
     args = parser.parse_args()
 
     main(
@@ -169,4 +179,5 @@ if __name__ == "__main__":
         max_samples=args.max_samples,
         scenario=args.scenario,
         selected_ids_file=args.selected_ids_file,
+        gsm8k_selected_idx_file=args.gsm8k_selected_idx_file,
     )

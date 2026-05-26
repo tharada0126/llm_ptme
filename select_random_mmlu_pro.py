@@ -6,8 +6,17 @@ from datasets import load_dataset
 
 DATASET_NAME = "TIGER-Lab/MMLU-Pro"
 SAMPLES_PER_CATEGORY = 100
+SUBSET_PER_CATEGORY = 20
 SEED = 42
-OUTPUT_FILE = "mmlu_pro_selected_ids.txt"
+OUTPUT_DIR = "scripts"
+
+
+def _write_ids(path: str, selected: dict) -> int:
+    with open(path, "w", encoding="utf-8") as f:
+        for category, ids in sorted(selected.items()):
+            for qid in ids:
+                f.write(f"{qid}\n")
+    return sum(len(ids) for ids in selected.values())
 
 
 def main():
@@ -20,20 +29,26 @@ def main():
         by_category[example["category"]].append(example["question_id"])
 
     rng = random.Random(SEED)
-    selected = {}
+    selected_100 = {}
     for category, ids in sorted(by_category.items()):
         n = min(SAMPLES_PER_CATEGORY, len(ids))
-        selected[category] = sorted(rng.sample(ids, n))
+        selected_100[category] = sorted(rng.sample(ids, n))
         print(f"  {category}: {n} selected (total {len(ids)})")
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        for category, ids in sorted(selected.items()):
-            for qid in ids:
-                f.write(f"{qid}\n")
+    selected_20 = {
+        category: ids[:SUBSET_PER_CATEGORY]
+        for category, ids in selected_100.items()
+    }
 
-    total = sum(len(ids) for ids in selected.values())
-    print(f"\nSaved {total} question IDs to {OUTPUT_FILE}")
-    print(f"Categories: {len(selected)}, samples per category: {SAMPLES_PER_CATEGORY}, seed: {SEED}")
+    path_100 = f"{OUTPUT_DIR}/mmlu_pro_selected_ids.txt"
+    path_20 = f"{OUTPUT_DIR}/mmlu_pro_selected_ids_20.txt"
+
+    total_100 = _write_ids(path_100, selected_100)
+    total_20 = _write_ids(path_20, selected_20)
+
+    print(f"\nSaved {total_100} question IDs to {path_100}")
+    print(f"Saved {total_20} question IDs to {path_20}")
+    print(f"Categories: {len(selected_100)}, seed: {SEED}")
 
 
 if __name__ == "__main__":
