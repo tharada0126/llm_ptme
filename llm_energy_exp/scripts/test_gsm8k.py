@@ -63,14 +63,28 @@ def _build_prompt(question: str) -> str:
     )
 
 
-def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] = None):
+def test_gsm8k(
+    model_name,
+    dataset_name,
+    output_dir,
+    max_samples: Optional[int] = None,
+    selected_idx_file: Optional[str] = None,
+):
     _ = dataset_name
     if not DEFAULT_GSM8K_PATH.exists():
         raise FileNotFoundError(f"GSM8K file not found: {DEFAULT_GSM8K_PATH}")
 
-    questions = list(_read_jsonl(DEFAULT_GSM8K_PATH))
+    all_questions = list(_read_jsonl(DEFAULT_GSM8K_PATH))
+
+    if selected_idx_file is not None:
+        with open(selected_idx_file, encoding="utf-8") as f:
+            selected_indices = {int(line.strip()) for line in f if line.strip()}
+        indexed_questions = [(i, q) for i, q in enumerate(all_questions) if i in selected_indices]
+    else:
+        indexed_questions = list(enumerate(all_questions))
+
     if max_samples is not None:
-        questions = questions[:max_samples]
+        indexed_questions = indexed_questions[:max_samples]
 
     # Determine output paths before the loop to support resume
     out_prefix = f"gsm8k_{model_name}"
@@ -91,7 +105,7 @@ def test_gsm8k(model_name, dataset_name, output_dir, max_samples: Optional[int] 
                 done_ids.add(rec["task_id"])
         print(f"Resuming: {len(done_ids)} questions already done, skipping.")
 
-    remaining = [(i, item) for i, item in enumerate(questions) if f"gsm8k/{i}" not in done_ids]
+    remaining = [(i, item) for i, item in indexed_questions if f"gsm8k/{i}" not in done_ids]
 
     if not remaining:
         print("All questions already completed.")

@@ -32,37 +32,41 @@ datasets=(
   "mmlu-pro"
 )
 
-MMLU_PRO_SELECTED_IDS="/workspace/scripts/mmlu_pro_selected_ids.txt"
+MMLU_PRO_SELECTED_IDS="/workspace/scripts/mmlu_pro_selected_ids_20.txt"
+GSM8K_SELECTED_IDX="/workspace/scripts/gsm8k_selected_idx.txt"
 
 for ((i=${#scenarios[@]}-1; i>=0; i--)); do
-for dataset in "${datasets[@]}"; do
-  if [[ "$dataset" == "gsm8k" ]]; then
-    max_samples="none"
-    selected_ids_file=""
-  elif [[ "$dataset" == "mmlu-pro" ]]; then
-    max_samples="none"
-    selected_ids_file="$MMLU_PRO_SELECTED_IDS"
-  else
-    max_samples="none"
-    selected_ids_file=""
-  fi
+  scenario="${scenarios[$i]}"
+  freq="${freqs[$i]}"
+  cpuset="${core_ids[$i]}"
+  mem="${memory[$i]}"
+  nthreads="${threads[$i]}"
 
-    scenario="${scenarios[$i]}"
-    freq="${freqs[$i]}"
-    cpuset="${core_ids[$i]}"
-    mem="${memory[$i]}"
-    nthreads="${threads[$i]}"
+  echo "========================================"
+  echo "Scenario: ${scenario}"
+  echo "Frequency: ${freq}"
+  echo "CPU set: ${cpuset}"
+  echo "Memory: ${mem}"
+  echo "Threads: ${nthreads}"
+  echo "========================================"
 
-    echo "========================================"
-    echo "Scenario: ${scenario}"
-    echo "Frequency: ${freq}"
-    echo "CPU set: ${cpuset}"
-    echo "Memory: ${mem}"
-    echo "Threads: ${nthreads}"
-    echo "========================================"
+  sudo cpupower -c "$cpuset" frequency-set -g performance
+  sudo cpupower -c "$cpuset" frequency-set -d "$freq" -u "$freq"
 
-    sudo cpupower -c "$cpuset" frequency-set -g performance
-    sudo cpupower -c "$cpuset" frequency-set -d "$freq" -u "$freq"
+  for dataset in "${datasets[@]}"; do
+    if [[ "$dataset" == "gsm8k" ]]; then
+      max_samples="none"
+      selected_ids_file="none"
+      gsm8k_selected_idx_file="$GSM8K_SELECTED_IDX"
+    elif [[ "$dataset" == "mmlu-pro" ]]; then
+      max_samples="none"
+      selected_ids_file="$MMLU_PRO_SELECTED_IDS"
+      gsm8k_selected_idx_file="none"
+    else
+      max_samples="none"
+      selected_ids_file="none"
+      gsm8k_selected_idx_file="none"
+    fi
 
     for model in "${models[@]}"; do
       echo "Running ${scenario}, ${model}, ${dataset}"
@@ -75,6 +79,7 @@ for dataset in "${datasets[@]}"; do
         DATASET_NAME="$dataset" \
         MAX_SAMPLES="$max_samples" \
         SELECTED_IDS_FILE="$selected_ids_file" \
+        GSM8K_SELECTED_IDX_FILE="$gsm8k_selected_idx_file" \
         docker compose -f docker-compose.yml \
         -f docker-compose.scenario.yml \
         run --rm llm-exp; then
