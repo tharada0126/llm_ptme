@@ -1,0 +1,6 @@
+{
+  "model_name": "phi:2.7b",
+  "dataset": "GSM8K",
+  "num_samples": 300,
+  "accuracy": 0.17666666666666667
+}

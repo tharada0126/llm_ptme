@@ -1,0 +1,6 @@
+{
+  "model_name": "tinyllama:1.1b",
+  "dataset": "GSM8K",
+  "num_samples": 1319,
+  "accuracy": 0.021986353297952996
+}

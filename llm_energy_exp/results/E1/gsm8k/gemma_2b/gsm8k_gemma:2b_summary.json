@@ -1,0 +1,6 @@
+{
+  "model_name": "gemma:2b",
+  "dataset": "GSM8K",
+  "num_samples": 200,
+  "accuracy": 0.095
+}

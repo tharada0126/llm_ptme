@@ -1,0 +1,6 @@
+{
+  "model_name": "mistral:7b",
+  "dataset": "GSM8K",
+  "num_samples": 451,
+  "accuracy": 0.29933481152993346
+}

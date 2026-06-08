@@ -1,0 +1,6 @@
+{
+  "model_name": "qwen2.5:1.5b",
+  "dataset": "GSM8K",
+  "num_samples": 1319,
+  "accuracy": 0.48142532221379836
+}
