@@ -17,6 +17,10 @@ SUPPORTED_MODELS = [
     "qwen2.5:1.5b",
     "gemma:2b",
     "mistral:7b",
+    "gemma3:4b",
+    "phi3.5:3.8b",
+    "deepseek-r1:1.5b",
+    "qwen3.6:35b",
 ]
 
 SUPPORTED_DATASETS = [

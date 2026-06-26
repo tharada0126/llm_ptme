@@ -9,7 +9,7 @@ def run_with_profiler(profiler: ep.EnergyProfiler, model_name: str, prompt: str)
     """Run inference with energy profiling, retrying until a valid profile is obtained."""
     while True:
         profiler.start()
-        completion, rss_trace, ttft = call_ollama_generate_with_memory(model=model_name, prompt=prompt)
+        completion, rss_trace, ttft = call_ollama_generate_with_memory(model=model_name, prompt=prompt, num_predict=None)
         profile = profiler.stop()
         if (
             profile["cpu_energy"] is not None
