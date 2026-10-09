@@ -1,6 +1,0 @@
-services:
-  llm-exp:
-    container_name: "llm_exp_${SCENARIO:-E0}"
-    cpuset: "${CPUSET_CPUS}"
-    mem_limit: "${MEMORY_LIMIT}"
-    memswap_limit: "${MEMORY_LIMIT}"

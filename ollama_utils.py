@@ -1,191 +1,144 @@
-import os
+import subprocess
 import time
-from dataclasses import dataclass
-from threading import Thread
-from typing import Any, Dict, List, Tuple
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List, Optional
 
-import psutil
-from openai import OpenAI
 from ollama import Client
-from types import SimpleNamespace
 
+# Client() reads OLLAMA_HOST from the environment (default http://127.0.0.1:11434).
 
-def find_ollama_processes() -> List[psutil.Process]:
-    procs: List[psutil.Process] = []
-    for p in psutil.process_iter(["pid", "name", "cmdline"]):
-        try:
-            info = p.info
-            cmd = " ".join(info.get("cmdline") or [])
-            name = info.get("name") or ""
-            if "ollama" in name.lower() or "ollama" in cmd.lower():
-                procs.append(p)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-
-    def score(proc: psutil.Process) -> int:
-        try:
-            cmd = " ".join(proc.cmdline()).lower()
-            return 0 if "serve" in cmd else 1
-        except Exception:
-            return 2
-
-    procs.sort(key=score)
-    return procs
-
-
-def collect_unique_processes(procs: List[psutil.Process], include_children: bool = True) -> List[psutil.Process]:
-    proc_map = {}
-
-    for p in procs:
-        try:
-            proc_map[p.pid] = p
-
-            if include_children:
-                for c in p.children(recursive=True):
-                    proc_map[c.pid] = c
-
-        except psutil.Error:
-            pass
-
-    return list(proc_map.values())
-
-
-def sum_rss_bytes(procs: List[psutil.Process], include_children: bool = True) -> int:
-    total = 0
-    unique_procs = collect_unique_processes(procs, include_children=include_children)
-
-    for p in unique_procs:
-        try:
-            total += p.memory_info().rss
-        except psutil.Error:
-            pass
-
-    return total
 
 @dataclass
-class RssTrace:
-    baseline_rss: int
-    peak_rss: int
-    final_rss: int
+class GenerationResult:
+    content: str
+    thinking: str
+    done_reason: Optional[str]
+    prompt_tokens: Optional[int]
+    completion_tokens: Optional[int]
+    # Wall-clock (UNIX epoch, seconds) timestamps used to align with the external power meter log.
+    t_start_unix: float
+    t_end_unix: float
+    latency_sec: float
+    ttft_sec: Optional[float]
+    # Server-side timings reported by Ollama (nanoseconds).
+    total_duration_ns: Optional[int]
+    load_duration_ns: Optional[int]
+    prompt_eval_duration_ns: Optional[int]
+    eval_duration_ns: Optional[int]
+
+    def profile_fields(self) -> Dict[str, Any]:
+        d = asdict(self)
+        for key in ("content", "thinking"):
+            d.pop(key)
+        return d
 
 
-def call_ollama_generate(
+def chat_generate(
+    client: Client,
     model: str,
     prompt: str,
-    system: str,
-    num_predict: int = 512,
-    num_thread: int | None = None,
-    on_first_token=None,
-):
-    client = Client(host="http://localhost:11434")
-
+    options: Dict[str, Any],
+    system: Optional[str] = None,
+    think: Optional[bool] = None,
+    keep_alive: Optional[str] = None,
+) -> GenerationResult:
     messages = []
     if system is not None:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    if num_thread is None:
-        num_thread_env = os.environ.get("OLLAMA_NUM_THREADS")
-        if num_thread_env is not None and num_thread_env != "":
-            num_thread = int(num_thread_env)
-    
-    options = {
-        "temperature": 0.0,
-        "num_predict": num_predict,
-    }
+    kwargs: Dict[str, Any] = {}
+    if think is not None:
+        kwargs["think"] = think
+    if keep_alive is not None:
+        kwargs["keep_alive"] = keep_alive
 
-    if num_thread is not None:
-        options["num_thread"] = num_thread
+    t_start_unix = time.time()
+    t0 = time.perf_counter()
+    ttft = None
+    content_chunks: List[str] = []
+    thinking_chunks: List[str] = []
+    final = None
 
-    stream = client.chat(
-        model=model,
-        messages=messages,
-        stream=True,
-        options=options,
+    for chunk in client.chat(model=model, messages=messages, stream=True, options=options, **kwargs):
+        msg = chunk.message
+        content = msg.content or ""
+        thinking = getattr(msg, "thinking", None) or ""
+        if (content or thinking) and ttft is None:
+            ttft = time.perf_counter() - t0
+        content_chunks.append(content)
+        thinking_chunks.append(thinking)
+        if chunk.done:
+            final = chunk
+
+    latency = time.perf_counter() - t0
+    t_end_unix = time.time()
+
+    return GenerationResult(
+        content="".join(content_chunks),
+        thinking="".join(thinking_chunks),
+        done_reason=getattr(final, "done_reason", None),
+        prompt_tokens=getattr(final, "prompt_eval_count", None),
+        completion_tokens=getattr(final, "eval_count", None),
+        t_start_unix=t_start_unix,
+        t_end_unix=t_end_unix,
+        latency_sec=latency,
+        ttft_sec=ttft,
+        total_duration_ns=getattr(final, "total_duration", None),
+        load_duration_ns=getattr(final, "load_duration", None),
+        prompt_eval_duration_ns=getattr(final, "prompt_eval_duration", None),
+        eval_duration_ns=getattr(final, "eval_duration", None),
     )
 
-    first = True
-    chunks = []
-    usage = None
-    finish_reason = None
 
-    for chunk in stream:
-        content = chunk.get("message", {}).get("content", "")
+def load_model(client: Client, model: str, options: Dict[str, Any], keep_alive: str) -> None:
+    """Load a model into memory without generating (empty prompt).
 
-        if content:
-            if first:
-                if on_first_token:
-                    on_first_token()
-                first = False
-            chunks.append(content)
+    Pass the same options (num_ctx, num_thread) as the inference requests; otherwise Ollama
+    loads with its default context length and reloads the model on the first real request.
+    """
+    client.generate(model=model, prompt="", options=options, keep_alive=keep_alive)
 
-        if chunk.get("done", False):
-            finish_reason = chunk.get("done_reason")
 
-            prompt_tokens = chunk.get("prompt_eval_count")
-            completion_tokens = chunk.get("eval_count")
+def unload_model(client: Client, model: str) -> None:
+    client.generate(model=model, prompt="", keep_alive=0)
 
-            if prompt_tokens is not None or completion_tokens is not None:
-                usage = SimpleNamespace(
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    total_tokens=(prompt_tokens or 0) + (completion_tokens or 0),
-                )
 
-    full_text = "".join(chunks)
+def unload_all_models(client: Client) -> List[str]:
+    unloaded = []
+    for m in client.ps().models:
+        unload_model(client, m.model)
+        unloaded.append(m.model)
+    return unloaded
 
-    response = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=full_text),
-                finish_reason=finish_reason,
-            )
-        ],
-        usage=usage,
-    )
 
-    return response
+def model_supports_thinking(client: Client, model: str) -> bool:
+    caps = getattr(client.show(model), "capabilities", None) or []
+    return "thinking" in caps
 
-def call_ollama_generate_with_memory(
-    model: str,
-    prompt: str,
-    system: str = None,
-    num_predict: int = 512,
-    poll_interval_sec: float = 0.02,
-) -> Tuple[Any, RssTrace]:
-    procs = find_ollama_processes()
-    baseline = sum_rss_bytes(procs, include_children=True)
-    peak = baseline
-    result_box: Dict[str, Any] = {}
-    err_box: Dict[str, BaseException] = {}
-    ttft_box: Dict[str, float] = {}  # 追加
 
-    def _runner() -> None:
-        try:
-            start = time.perf_counter()  # 追加
-            result = call_ollama_generate(
-                model=model,
-                prompt=prompt,
-                system=system,
-                num_predict=num_predict,
-                on_first_token=lambda: ttft_box.__setitem__("ttft", time.perf_counter() - start),  # 追加
-            )
-            result_box["result"] = result
-        except BaseException as e:
-            err_box["err"] = e
+def describe_model(client: Client, model: str) -> Dict[str, Any]:
+    info: Dict[str, Any] = {"model": model}
+    for m in client.list().models:
+        if m.model == model:
+            info["digest"] = m.digest
+            info["size_bytes"] = m.size
+    show = client.show(model)
+    details = getattr(show, "details", None)
+    if details is not None:
+        info["family"] = details.family
+        info["parameter_size"] = details.parameter_size
+        info["quantization_level"] = details.quantization_level
+    info["capabilities"] = list(getattr(show, "capabilities", None) or [])
+    return info
 
-    t = Thread(target=_runner, daemon=True)
-    t.start()
-    while t.is_alive():
-        peak = max(peak, sum_rss_bytes(procs, include_children=True))
-        time.sleep(poll_interval_sec)
-    t.join()
-    final = sum_rss_bytes(procs, include_children=True)
-    peak = max(peak, final)
-    if "err" in err_box:
-        raise err_box["err"]
-    return result_box["result"], RssTrace(
-        baseline_rss=baseline,
-        peak_rss=peak,
-        final_rss=final,
-    ), ttft_box.get("ttft", None)  # 追加
+
+def ollama_version() -> Optional[str]:
+    try:
+        out = subprocess.run(["ollama", "--version"], capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in out.splitlines():
+        if "version" in line:
+            return line.split()[-1]
+    return out.strip() or None
