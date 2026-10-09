@@ -24,6 +24,7 @@ from ollama_utils import (
     chat_generate,
     describe_model,
     load_model,
+    loaded_vram_bytes,
     model_supports_thinking,
     ollama_version,
     unload_all_models,
@@ -130,6 +131,9 @@ def main(args: argparse.Namespace) -> None:
     think = resolve_think(client, args.model_name, args.think)
 
     options: Dict[str, Any] = {"temperature": 0.0, "num_predict": args.num_predict, "num_ctx": args.num_ctx}
+    if args.num_gpu is not None:
+        # Number of layers offloaded to the GPU; 0 = CPU only (works for CUDA, ROCm and Metal).
+        options["num_gpu"] = args.num_gpu
     num_thread = args.num_thread or os.environ.get("OLLAMA_NUM_THREADS")
     if num_thread:
         options["num_thread"] = int(num_thread)
@@ -191,7 +195,10 @@ def main(args: argparse.Namespace) -> None:
     monitor.start()
     load_model(client, args.model_name, options, keep_alive=args.keep_alive)
     load_profile = monitor.stop()
-    events.mark("model_load_end", profile=load_profile)
+    vram = loaded_vram_bytes(client, args.model_name)
+    events.mark("model_load_end", profile=load_profile, size_vram_bytes=vram)
+    if vram:
+        print(f"Warning: {args.model_name} uses {vram / 2**20:.0f} MiB of GPU memory (num_gpu={args.num_gpu}).")
 
     events.mark("warmup_start")
     try:
@@ -261,6 +268,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_predict", type=int, default=512)
     parser.add_argument("--num_ctx", type=int, default=4096, help="Fixed explicitly; Ollama's default differs across versions")
     parser.add_argument("--num_thread", type=_int_or_none, default=None, help="Defaults to $OLLAMA_NUM_THREADS, else Ollama's choice")
+    parser.add_argument("--num_gpu", type=_int_or_none, default=0,
+                        help="Layers offloaded to the GPU (0 = CPU only, 'none' = Ollama's choice)")
     parser.add_argument("--think", choices=["auto", "true", "false"], default="auto",
                         help="auto: disable thinking for thinking-capable models, leave unset otherwise")
     parser.add_argument("--keep_alive", default="60m")

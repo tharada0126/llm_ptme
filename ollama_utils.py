@@ -112,6 +112,14 @@ def unload_all_models(client: Client) -> List[str]:
     return unloaded
 
 
+def loaded_vram_bytes(client: Client, model: str) -> Optional[int]:
+    """GPU memory used by a loaded model according to `ollama ps` (0 = running on CPU only)."""
+    for m in client.ps().models:
+        if m.model == model:
+            return m.size_vram
+    return None
+
+
 def model_supports_thinking(client: Client, model: str) -> bool:
     caps = getattr(client.show(model), "capabilities", None) or []
     return "thinking" in caps

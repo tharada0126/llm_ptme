@@ -77,6 +77,7 @@ The main `main.py` options:
 |---|---|---|
 | `--num_predict` | 512 | Same as the previous experiments |
 | `--num_ctx` | 4096 | Set explicitly because Ollama's default changes between versions |
+| `--num_gpu` | 0 | Layers offloaded to the GPU. 0 = CPU only, so desktop runs are comparable with the Pi. `size_vram_bytes` in `model_load_end` should be 0 |
 | `--think` | `auto` | `auto` disables thinking on thinking-capable models (qwen3.5, …) so all models share the 512-token budget |
 | `--idle_sec` | 30 | Idle baseline before and after each run, used for meter baseline subtraction |
 | `--cooldown_temp` | none (50 in `run_experiments.sh`) | Waits until the CPU is at or below this temperature before each run |
