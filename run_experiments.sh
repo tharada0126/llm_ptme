@@ -17,7 +17,7 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 TAG="${TAG:-rpi}"
-PYTHON="${PYTHON:-.venv/bin/python}"
+PYTHON="${PYTHON:-llm_rpi/bin/python}"
 PULL_MISSING="${PULL_MISSING:-0}"
 REMOVE_AFTER="${REMOVE_AFTER:-0}"
 COOLDOWN_TEMP="${COOLDOWN_TEMP:-50}"
@@ -42,7 +42,7 @@ models=(
 )
 
 datasets=(
-  "human_eval"
+  #"human_eval"
   "gsm8k"
   "mmlu-pro"
 )
